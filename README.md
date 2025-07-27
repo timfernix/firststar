@@ -16,6 +16,10 @@
   `/movie suggest` – Suggest a movie  
   `/movie list` – Show all suggestions in an embed  
   `/movie watched` – (Owner only) Mark a suggestion as watched
+  `/movie random` – Select one random movie from suggestions and start a poll
 
+- **Minecraft Server Status:**
+  `/serverstatus` – Uses API to determine the status of a specified minecraft server
+  
 - **Onboarding Welcome:**  
   Automatic welcome message after Discord onboarding, including chosen roles.
