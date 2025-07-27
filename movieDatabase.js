@@ -9,10 +9,10 @@ const db = mysql.createPool({
 });
 
 module.exports = {
-    addSuggestion: (userId, title, description, canStream, callback) => {
+    addSuggestion: (userId, title, link, canStream, callback) => {
         db.query(
-            'INSERT INTO movie_night_suggestions (user_id, title, description, can_stream) VALUES (?, ?, ?, ?)',
-            [userId, title, description, canStream ? 1 : 0],
+            'INSERT INTO movie_night_suggestions (user_id, title, link, can_stream) VALUES (?, ?, ?, ?)',
+            [userId, title, link, canStream ? 1 : 0],
             (err, result) => callback && callback(err, result)
         );
     },
