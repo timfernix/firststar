@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PollLayoutType } = require('discord.js');
 const movieDB = require('../movieDatabase');
 
 module.exports = {
@@ -14,13 +14,13 @@ module.exports = {
                         .setRequired(true)
                         .setMaxLength(255))
                 .addStringOption(opt =>
-                    opt.setName('description')
-                        .setDescription('Description or custom text')
+                    opt.setName('link')
+                        .setDescription('Link to more information about the movie')
                         .setRequired(true)
                         .setMaxLength(1000))
                 .addBooleanOption(opt =>
                     opt.setName('canstream')
-                        .setDescription('Can you stream this movie?')
+                        .setDescription('Can you/Tim stream this movie?')
                         .setRequired(true))
 
         )
@@ -35,6 +35,10 @@ module.exports = {
                     opt.setName('id')
                         .setDescription('ID of the suggestion to remove')
                         .setRequired(true))
+        )
+        .addSubcommand(sub =>
+            sub.setName('random')
+                .setDescription('Starts a poll for a random movie suggestion')
         ),
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
@@ -42,21 +46,21 @@ module.exports = {
         // /movie suggest
         if (sub === 'suggest') {
             const title = interaction.options.getString('title');
-            const description = interaction.options.getString('description') || '';
+            const link = interaction.options.getString('link') || '';
             const canStream = interaction.options.getBoolean('canstream');
 
             if (title.length > 255) {
                 return interaction.reply({ content: 'Title too long (max 255 characters).', flags: 64 });
             }
-            if (description.length > 1000) {
-                return interaction.reply({ content: 'Description too long (max 1000 characters).', flags: 64 });
+            if (link.length > 1000) {
+                return interaction.reply({ content: 'Link too long (max 1000 characters).', flags: 64 });
             }
 
-            movieDB.addSuggestion(interaction.user.id, title, description, canStream, (err) => {
+            movieDB.addSuggestion(interaction.user.id, title, link, canStream, (err) => {
                 if (err) {
                     return interaction.reply({ content: 'Error saving your suggestion.', flags: 64 });
                 }
-                interaction.reply({ content: 'Your movie suggestion has been saved!', flags: 64 });
+                interaction.reply('Your movie suggestion has been saved!');
             });
         }
 
@@ -77,7 +81,7 @@ module.exports = {
                     }
                     const emoji = row.can_stream ? '✅' : '❌';
                     entries.push(
-                        `**${row.title}** (id: ${row.id})\nSuggested by: ${userMention}\nCan Stream: ${emoji}\n${row.description || '_No description_'}`
+                        `**${row.title}** (id: ${row.id})\nSuggested by: ${userMention}\nCan Stream: ${emoji}\n[More info](${row.link})`
                     );
                 }
 
@@ -117,7 +121,53 @@ module.exports = {
                 if (err || result.affectedRows === 0) {
                     return interaction.reply({ content: 'Could not remove this suggestion.', flags: 64 });
                 }
-                interaction.reply({ content: 'Suggestion removed from the list.', flags: 64 });
+                interaction.reply(':white_check_mark: Movie watched - removed from the watchlist.');
+            });
+        }
+
+        // /movie random
+        else if (sub === 'random') {
+            movieDB.getSuggestions(async (err, results) => {
+                if (err || !results.length) {
+                    return interaction.reply({ content: 'No movie suggestions found.', flags: 64 });
+                }
+                const random = results[Math.floor(Math.random() * results.length)];
+                let userMention;
+                try {
+                    const user = await interaction.client.users.fetch(random.user_id);
+                    userMention = user ? `<@${user.id}>` : random.user_id;
+                } catch {
+                    userMention = random.user_id;
+                }
+                let userName;
+                try {
+                    const user = await interaction.client.users.fetch(random.user_id);
+                    userName = user ? user.username : random.user_id;
+                } catch {
+                    userName = random.user_id;
+                }
+                const emoji = random.can_stream ? '✅' : '❌';
+
+                await interaction.reply({
+                    content: `Random movie suggestion picked:\n**${random.title}** (id: ${random.id})\nSuggested by: ${userMention}\nCan Stream: ${emoji}\nA poll will be started in this channel!`,
+                    flags: 64
+                });
+
+                await interaction.channel.send({
+                    poll: {
+                        question: {
+                            text: `Should we watch ${random.title}?\nSuggested by ${userName}`
+                        },
+                        answers: [
+                            { emoji: '👍', text: 'Yes' },
+                            { emoji: '👎', text: 'No' },
+                            { emoji: '🤷', text: "Cant decide / Not taking part" }
+                        ],
+                        duration: 1, 
+                        allowMultiselect: false,
+                        layoutType: PollLayoutType.Default
+                    }
+                });
             });
         }
     }
