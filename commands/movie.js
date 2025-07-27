@@ -39,6 +39,13 @@ module.exports = {
         .addSubcommand(sub =>
             sub.setName('random')
                 .setDescription('Starts a poll for a random movie suggestion')
+                .addIntegerOption(opt =>
+                    opt.setName('hours')
+                        .setDescription('How many hours should the poll last? (1-12)')
+                        .setMinValue(1)
+                        .setMaxValue(12)
+                        .setRequired(false)
+                )
         ),
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
@@ -113,7 +120,7 @@ module.exports = {
 
         // /movie watched
         else if (sub === 'watched') {
-            if (interaction.user.id !== '') {
+            if (interaction.user.id !== '589773984447463434') {
                 return interaction.reply({ content: 'Only the server owner can use this command.', flags: 64 });
             }
             const id = interaction.options.getInteger('id');
@@ -127,6 +134,9 @@ module.exports = {
 
         // /movie random
         else if (sub === 'random') {
+            const hours = interaction.options.getInteger('hours') || 1;
+            const duration = Math.max(1, Math.min(hours, 12));
+
             movieDB.getSuggestions(async (err, results) => {
                 if (err || !results.length) {
                     return interaction.reply({ content: 'No movie suggestions found.', flags: 64 });
@@ -149,7 +159,7 @@ module.exports = {
                 const emoji = random.can_stream ? '✅' : '❌';
 
                 await interaction.reply({
-                    content: `Random movie suggestion picked:\n**${random.title}** (id: ${random.id})\nSuggested by: ${userMention}\nCan Stream: ${emoji}\nA poll will be started in this channel!`,
+                    content: `Random movie suggestion picked:\n**${random.title}** (id: ${random.id})\nSuggested by: ${userMention}\nCan Stream: ${emoji}\nA poll will be started in this channel for ${duration} hour(s)!`,
                     flags: 64
                 });
 
@@ -163,7 +173,7 @@ module.exports = {
                             { emoji: '👎', text: 'No' },
                             { emoji: '🤷', text: "Cant decide / Not taking part" }
                         ],
-                        duration: 1, 
+                        duration: duration, 
                         allowMultiselect: false,
                         layoutType: PollLayoutType.Default
                     }
